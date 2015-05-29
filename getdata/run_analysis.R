@@ -31,13 +31,6 @@ run_analysis <- function () {
         
         
         f_std<-grep("std", features$V2)
-
-
-        
-        ##
-
-        
-        ## don't know how to do T_T
         
 }
 ## Appropriately labels the data set with descriptive variable names. 
