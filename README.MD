@@ -6,3 +6,8 @@ output: pdf_document
 ---
 ## My Datasciece Repository
 This repository is for the projects of Data Science Courses by John Hopkins on Coursera.
+
+####getdata
+Getting and Cleaning Data
+####Stat_Infer
+Statistical Inference
