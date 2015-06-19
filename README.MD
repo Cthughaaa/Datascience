@@ -11,3 +11,4 @@ This repository is for the projects of Data Science Courses by John Hopkins on C
 Getting and Cleaning Data
 ####Stat_Infer
 Statistical Inference
+Course project assignment part1 and part2 are uploaded
