@@ -1,0 +1,238 @@
+---
+title: "Statistical Inference Course Project part2"
+author: "Yao Bin"
+date: "June 18, 2015"
+output: pdf_document
+---
+
+# Overview
+
+  - In this study, we analyze the ToothGrowth data in the R datasets package.  
+  - Exploratory analysis of basic features are performed.  
+  - Then, confidence intervals and hypothesis tests are performed.  
+  - At last, brief conclusions and assumptions are made.  
+  - Code chunks for data analysis and plots are demonstrated in the appendix in the end of the document.
+
+# Exploratory data analysis
+  First, load the ToothGrowth data and check the structure and type of data (see Chunk1).
+```{r chunk1, echo=FALSE, message=FALSE, comment="    "}
+# load necessary packages and data
+library("datasets")
+tgdata<-ToothGrowth
+
+options(digits=5)
+# structure of data
+str(tgdata)
+```
+
+  We can tell that the data contains the tooth length of pigs fed with different doses of VC/OJ supplement.
+  We reconstructure and summarize the data with "dplyr" package.(see chunk2)
+```{r chunk2, echo=FALSE, message=FALSE, comment="    "}
+library("dplyr")
+group_by(tgdata, supp,dose) %>%
+        summarize(min=min(len), median=median(len), max=max(len), mean=mean(len), sd=sd(len))
+```
+
+  Then, we make some plots to get intuitive information.  
+  Check if the data is close to normal distribution, which most biomedical datasets are close to. The plot shows that the data is not so close to normal distribution (see chunk3), which determines the kind of statistical test we use.  
+```{r f1, echo=FALSE, fig.height=4, fig.width=6}
+len_oj<-tgdata[tgdata$supp=="OJ", "len"]
+len_vc<-tgdata[tgdata$supp=="VC", "len"]
+par(mfrow=c(1,2))
+hist(len_oj, prob=T, ylim=c(0, 0.07), col="coral", main="", xlab="OJ")
+curve(dnorm(x, mean=mean(len_oj), sd=sd(len_oj)), add=T, lty=2, lwd=3, col="brown")
+lines(density(len_oj), col="brown", lwd=3)
+hist(len_vc,prob=T, col="lightblue", main="", xlab="VC")
+curve(dnorm(x, mean=mean(len_vc), sd=sd(len_vc)), add=T, lty=2, lwd=3, col="steelblue")
+lines(density(len_vc), col="steelblue", lwd=3)
+```
+
+  Check the relationship between supplement type/dose and tooth length. (see Chunk4)  
+```{r f2, echo=FALSE, fig.height=3, fig.width=6}
+library("ggplot2")
+ggplot(tgdata, aes(x=as.factor(dose), y=len))+
+        geom_boxplot(aes(fill=supp))+
+        labs(title="Tooth length by different supplements and doses",
+             x="Supplement dose",
+             y="Tooth length")+
+        theme_bw()
+```
+
+# Confidence intervals and hypothesis tests
+
+  To compare tooth growth by supplement and dose, we perform confidence intervals and t-tests.  
+  For the data is not close to normal distribution, Welch t-test is used here. Confidential level is 0.95. (see chunk3)  
+```{r chunk3,echo=FALSE,results='hide'}
+# len by supp
+t0<-with(tgdata, t.test(len~supp, paired=F, var.equal=F))
+CI.L.0<-t0$conf.int[1]
+CI.U.0<-t0$conf.int[2]
+p0<-t0$p.value
+
+t.supp<-data.frame()
+for(i in unique(tgdata$dose)) {
+        t.i<-t.test(len~supp, paired=F, var.equal=F, data=filter(tgdata, dose==i) )
+        CI.L.i<-t.i$conf.int[1]
+        CI.U.i<-t.i$conf.int[2]
+        p.i<-t.i$p.value
+        result.i<-cbind(CI.L.i, CI.U.i, p.i)
+        t.supp<-rbind(t.supp, result.i)
+}
+names(t.supp)<-c("CI.L", "CL.U", "p.value")
+
+# len by dose for each supp
+tg.a<-filter(tgdata, dose==c(0.5, 1.0))
+tg.b<-filter(tgdata, dose==c(0.5, 2.0))
+tg.c<-filter(tgdata, dose==c(1.0, 2.0))
+
+# len by dose for supp "VC"
+vc.a<-t.test(len~dose, paired=F, var.equal=F, data=filter(tg.a, supp=="VC") )
+vc.b<-t.test(len~dose, paired=F, var.equal=F, data=filter(tg.b, supp=="VC") )
+vc.c<-t.test(len~dose, paired=F, var.equal=F, data=filter(tg.c, supp=="VC") )
+results.vc<-as.data.frame(rbind(vc.a, vc.b, vc.c))
+CI.vc<-rbind(vc.a$conf.int, vc.b$conf.int, vc.c$conf.int)
+p.value.vc<-results.vc[,"p.value"]
+t.vc<-cbind(CI.vc, p.value.vc)
+rownames(t.vc)<-c("0.5~1.0", "0.5~2.0", "1.0~2.0")
+colnames(t.vc)<-c("CI.L", "CL.U", "p.value")
+
+# len by dose for supp "OJ"
+oj.a<-t.test(len~dose, paired=F, var.equal=F, data=filter(tg.a, supp=="OJ") )
+oj.b<-t.test(len~dose, paired=F, var.equal=F, data=filter(tg.b, supp=="OJ") )
+oj.c<-t.test(len~dose, paired=F, var.equal=F, data=filter(tg.c, supp=="OJ") )
+results.oj<-as.data.frame(rbind(oj.a, oj.b, oj.c))
+CI.oj<-rbind(oj.a$conf.int, oj.b$conf.int, oj.c$conf.int)
+p.value.oj<-results.oj[,"p.value"]
+t.oj<-cbind(CI.oj, p.value.oj)
+rownames(t.oj)<-c("0.5~1.0", "0.5~2.0", "1.0~2.0")
+colnames(t.oj)<-c("CI.L", "CL.U", "p.value")
+
+```
+
+
+**First, does tooth growth differ by supplement type?**  
+
+  Generally, the confidential interval is **[```r CI.L.0```, ```r CI.U.0```]**, and p value is **```r p0```**.  
+
+**Does tooth growth differ by different doses of two kinds of supplements?**    
+```{r, echo=FALSE, comment="    "}
+t.supp
+```
+
+**Then, does tooth growth depend on dose for each supplement, respectly?**  
+
+  For VC:  
+```{r, echo=FALSE, comment="    "}
+t.vc
+```
+
+  For OJ:  
+```{r, echo=FALSE, comment="    "}
+t.oj
+```
+
+# Conclusions and assumptions  
+
+  1. At lower dose, 0.5 mg and 1.0 mg, teeth grow longer when pigs are fed with OJ than with VC; at higher dose, 2.0 mg, there are no significant differences between the two supplements.
+
+  2. For each supplement respectly, tooth length depends on the dose of supplement.
+
+# Appendix: Code chunks
+
+## Chunk1. Load necessary packages and data
+```{r packages and data, eval=FALSE}
+library("datasets")
+library("dplyr")
+library("ggplot2")
+tgdata<-ToothGrowth
+```
+
+## Chunk2. Investigate structure of data
+```{r structure and type, eval=FALSE}
+# head and tail of the data
+datahead<-head(tgdata, 3)
+datatail<-tail(tgdata, 3)
+
+# structure of data
+str(tgdata)
+
+# summary of data
+summary(tgdata)
+
+# 
+group_by(tgdata, supp,dose) %>%
+        summarize(min=min(len), median=median(len), max=max(len), mean=mean(len), sd=sd(len))
+```
+
+## Chunk3. Tooth length density curve versus normal distribution curve
+```{r len distribution, eval=FALSE}
+len_oj<-tgdata[tgdata$supp=="OJ", "len"]
+len_vc<-tgdata[tgdata$supp=="VC", "len"]
+par(mfrow=c(1,2))
+hist(len_oj, prob=T, col="lightblue", main="")
+curve(dnorm(x, mean=mean(len_oj), sd=sd(len_oj)), add=T, lty=2, lwd=3, col="steelblue")
+lines(density(len_oj), col="steelblue", lwd=3)
+hist(len_vc,prob=T, col="coral", main="")
+curve(dnorm(x, mean=mean(len_vc), sd=sd(len_vc)), add=T, lty=2, lwd=3, col="brown")
+lines(density(len_vc), col="brown", lwd=3)
+```
+
+## Chunk4. Tooth length by different supplements and doses
+```{r len by supp and dose, eval=FALSE}
+library("ggplot2")
+ggplot(tgdata, aes(x=as.factor(dose), y=len))+
+        geom_boxplot(aes(fill=supp))+
+        labs(title="Tooth length by different supplements and doses",
+             x="Supplement dose",
+             y="Tooth length")+
+        theme_bw()
+```
+
+## Chunk5. Confidence intervals and hypothesis tests
+```{r t.test, eval=FALSE}
+# len by supp
+t0<-with(tgdata, t.test(len~supp, paired=F, var.equal=F))
+CI.L.0<-t0$conf.int[1]
+CI.U.0<-t0$conf.int[2]
+p0<-t0$p.value
+
+t.supp<-data.frame()
+for(i in unique(tgdata$dose)) {
+        t.i<-t.test(len~supp, paired=F, var.equal=F, data=filter(tgdata, dose==i) )
+        CI.L.i<-t.i$conf.int[1]
+        CI.U.i<-t.i$conf.int[2]
+        p.i<-t.i$p.value
+        result.i<-cbind(CI.L.i, CI.U.i, p.i)
+        t.supp<-rbind(t.supp, result.i)
+}
+names(t.supp)<-c("CI.L", "CL.U", "p.value")
+
+# filter data by dose
+tg.a<-filter(tgdata, dose==c(0.5, 1.0))
+tg.b<-filter(tgdata, dose==c(0.5, 2.0))
+tg.c<-filter(tgdata, dose==c(1.0, 2.0))
+
+# t.test: len by dose for supp "VC"
+vc.a<-t.test(len~dose, paired=F, var.equal=F, data=filter(tg.a, supp=="VC") )
+vc.b<-t.test(len~dose, paired=F, var.equal=F, data=filter(tg.b, supp=="VC") )
+vc.c<-t.test(len~dose, paired=F, var.equal=F, data=filter(tg.c, supp=="VC") )
+results.vc<-as.data.frame(rbind(vc.a, vc.b, vc.c))
+CI.vc<-rbind(vc.a$conf.int, vc.b$conf.int, vc.c$conf.int)
+p.value.vc<-results.vc[,"p.value"]
+t.vc<-cbind(CI.vc, p.value.vc)
+rownames(t.vc)<-c("0.5~1.0", "0.5~2.0", "1.0~2.0")
+colnames(t.vc)<-c("CI.L", "CL.U", "p.value")
+
+# t.test: len by dose for supp "OJ"
+oj.a<-t.test(len~dose, paired=F, var.equal=F, data=filter(tg.a, supp=="OJ") )
+oj.b<-t.test(len~dose, paired=F, var.equal=F, data=filter(tg.b, supp=="OJ") )
+oj.c<-t.test(len~dose, paired=F, var.equal=F, data=filter(tg.c, supp=="OJ") )
+results.oj<-as.data.frame(rbind(oj.a, oj.b, oj.c))
+CI.oj<-rbind(oj.a$conf.int, oj.b$conf.int, oj.c$conf.int)
+p.value.oj<-results.oj[,"p.value"]
+t.oj<-cbind(CI.oj, p.value.oj)
+rownames(t.oj)<-c("0.5~1.0", "0.5~2.0", "1.0~2.0")
+colnames(t.oj)<-c("CI.L", "CL.U", "p.value")
+```
+
+
