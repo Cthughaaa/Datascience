@@ -8,7 +8,7 @@ output: pdf_document
 This repository is for the projects of Data Science Courses by John Hopkins on Coursera.
 
 ####getdata
-Getting and Cleaning Data
+**Getting and Cleaning Data**
 ####Stat_Infer
-Statistical Inference
+**Statistical Inference**
 Course project assignment part1 and part2 are uploaded
